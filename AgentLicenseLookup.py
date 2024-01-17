@@ -74,6 +74,13 @@ def load_sircon():
     web_functions.web_wait(10)
     return browser
 
+
+def setup_search_sircon(browser):
+    browser = web_functions.sircon_select_state_search(browser)
+    web_functions.web_wait()
+    return browser
+
+
 def main():
     # Create the file paths needed for screenshots
     create_screenshot_file_paths()
@@ -89,8 +96,17 @@ def main():
 
     browser = load_sircon()
 
+    browser = setup_search_sircon(browser)
 
+    browser = web_functions.sircon_select_individual_search(browser)
 
+    browser = web_functions.sircon_add_license_search_info(browser, "1648279")
+
+    browser, data = web_functions.sircon_agency_lookup(browser, "Redpoint County Mutual Insurance Company")
+
+    print(data)
+
+    print("should be there")
 
 
 if __name__ == "__main__":
