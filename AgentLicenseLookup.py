@@ -2,20 +2,9 @@ import sys
 
 sys.path.append('C:\\PA-Functions')
 
-import csv
 import json
-import time
-import datetime
 import pathlib
-import requests
-import zipfile
-import os
-from html.parser import HTMLParser
-import re
-from datetime import date
-import datetime
-import shutil
-import gspread
+from datetime import datetime
 
 from web_functions import WebFunctions
 from db_functions import DBCalls
@@ -60,8 +49,7 @@ def setup_google_connection():
     google_service, google_spreadsheet = google.authorize_json(cred.google_cred_json_file_path)
     # We need the google sheet link
     google_sheet_link = google.get_google_sheet_link(google_spreadsheet=google_spreadsheet,
-                                                     google_spreadsheet_url=cred.google_sheet_url,
-                                                     sheet_worksheet_name=cred.claim_pd_worksheet_name)
+                                                     google_spreadsheet_url=cred.google_sheet_url)
     return google_service, google_sheet_link
 
 
@@ -71,7 +59,7 @@ def load_sircon():
     browser = web_functions.startup_browser(browser, cred.sircon_compliance_website)
     web_functions.web_wait()
     browser = web_functions.sircon_proceed_check_webpage(browser)
-    web_functions.web_wait(10)
+    web_functions.web_wait()
     return browser
 
 
@@ -79,6 +67,23 @@ def setup_search_sircon(browser):
     browser = web_functions.sircon_select_state_search(browser)
     web_functions.web_wait()
     return browser
+
+
+def process_google_sheet_data(google_sheet_link):
+    # google_sheet_data = google.get_all_data_from_spreadsheet(google_sheet_link, cred.google_sheet_agent_license_status, json_format=True)
+
+    agent_google_sheet_data = db_functions.get_agent_license_status([None])
+
+    google.delete_data_from_spreadsheet(google_sheet_link, cred.google_sheet_agent_license_status)
+
+    data_list = []
+
+    for data in agent_google_sheet_data:
+        data_list.append(list(data))
+
+    google.add_google_sheet_data(google_sheet_link, data_list, True,  cred.google_sheet_agent_license_status)
+
+    return None
 
 
 def main():
@@ -90,9 +95,20 @@ def main():
     except Exception as w:
         log_information(note='Failure to connect to Google: ' + str(w)[0:900], failure_bit=1)
 
-    # function to get data here which will load data into tables
-
     # function to get claims that will
+    oracle_json_data = db_functions.get_pulse_agent_lookup()
+    db_functions.insert_agent_import([oracle_json_data, "Pulse"])
+
+    agent_lookup_data = db_functions.get_agent_import_data()
+    db_functions.insert_agent_license_processing(None)
+
+    # agent_google_sheet_data = list(agent_google_sheet_data)
+
+    process_google_sheet_data(google_sheet_link)
+
+    # for agent in agent_google_sheet_data:
+    #     agent_data = list(agent)
+    #     google.update_google_sheet_row_by_id(google_sheet_link, agent_data[0], agent_data[1:], True, cred.google_sheet_agent_license_status)
 
     browser = load_sircon()
 
@@ -100,13 +116,50 @@ def main():
 
     browser = web_functions.sircon_select_individual_search(browser)
 
-    browser = web_functions.sircon_add_license_search_info(browser, "1648279")
+    index = 1
 
-    browser, data = web_functions.sircon_agency_lookup(browser, "Redpoint County Mutual Insurance Company")
+    for agent in agent_lookup_data:
+        print("Processing : " + str(index) + " out of " + str(len(agent_lookup_data)))
 
-    print(data)
+        if index % 25 == 0:
+            process_google_sheet_data(google_sheet_link)
 
-    print("should be there")
+        browser = web_functions.sircon_add_license_search_info(browser, agent["LicenseNumber"])
+
+        # At this point it should be on the screen
+        browser, individual_data, data_returned = web_functions.sircon_get_individual_date(browser)
+
+        if data_returned:
+
+            browser, appointment_data = web_functions.sircon_agency_lookup(browser, "Redpoint County Mutual Insurance Company")
+
+            db_functions.insert_agent_websnapshot(
+                [json.dumps(individual_data), json.dumps(appointment_data), agent["AgentImportId"]])
+
+            db_functions.update_agent_license_processing([agent["AgentImportId"], True, data_returned, None])
+
+            log_information(note='Success Agent Import Id ' + datetime.now().strftime('%Y%m%d') + ' : ' + str(
+                agent["AgentImportId"]), failure_bit=0)
+
+        else:
+            db_functions.update_agent_license_processing([agent["AgentImportId"], True, data_returned, None])
+
+            log_information(note='Failure Agent Import Id ' + datetime.now().strftime('%Y%m%d') + ' : ' + str(
+                agent["AgentImportId"]), failure_bit=1)
+
+        # Have to comment out due to google quota limit need to do a full refresh only once and a while
+        # google_sheet_data = db_functions.get_agent_processed_individual_by_id([agent["AgentImportId"]])
+        # for google_data in google_sheet_data:
+        #     data_list = list(google_data)
+        #
+        #     print(str(data_list[0]))
+        #
+        #     google.update_google_sheet_row_by_id(google_sheet_link, data_list[0], data_list[1:], True,
+        #                                          cred.google_sheet_agent_lookup_individual)
+        #
+        #     print("should be updated")
+
+        index += 1
 
 
 if __name__ == "__main__":
