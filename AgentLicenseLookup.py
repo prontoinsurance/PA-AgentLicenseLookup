@@ -13,7 +13,7 @@ from db_functions import DBCalls
 from CredentialDefinitions import CredVariables
 from google_functions import GoogleFunctions
 
-cred = CredVariables("MIRROR")
+cred = CredVariables()
 google = GoogleFunctions(
     "Brandon.Hernandez@prontoinsurance.com",
     cred.google_smtp_password
@@ -28,7 +28,6 @@ db_functions = DBCalls(
 )
 
 PROCESS_ID = 4
-
 
 def create_screenshot_file_paths():
     if not pathlib.Path(cred.error_screenshot_file_path).exists():
