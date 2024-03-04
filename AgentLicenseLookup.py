@@ -217,7 +217,7 @@ def main():
             thread = threading.Thread(target=thread_function, args=(agent_list, google_sheet_link, len(threads)+1,))
             threads.append(thread)
             thread.start()
-            time.sleep(20)
+            time.sleep(120)
 
         for thread in threads:
             thread.join()
