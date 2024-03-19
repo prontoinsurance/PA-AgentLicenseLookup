@@ -138,7 +138,7 @@ def thread_function(agent_lookup_data, google_sheet_link, thread_number):
             print("Thread # " + str(thread_number) + " Processing : " + str(thread_index) + " out of " + str(
                 len(agent_lookup_data)))
 
-            if thread_index % 25 == 0:
+            if thread_index % 200 == 0:
                 process_google_sheet_data(google_sheet_link)
                 process_google_sheet_data_individual(google_sheet_link)
                 process_google_sheet_data_appointment(google_sheet_link)
