@@ -118,6 +118,7 @@ def process_google_sheet_data_all_agents(google_sheet_link):
             bts_pri_txs.ads_user
         WHERE au_aug_id = 'AGENT'
             AND au_sts_flag = 'A' 
+            AND au_py_id IS NULL
     '''
 
     agent_google_sheet_data = db_functions.execute_oracle_query(query=pulse_agent_query, return_data=True, LOB=False)
@@ -132,8 +133,8 @@ def process_google_sheet_data_all_agents(google_sheet_link):
             data_list.append([data['AGENTID'], data['ACTIVESTATUS'], data['AGENTLICENSE'], data['MISSINGLICENSEYN']])
 
         if data_list is not None and len(data_list) != 0:
-            google.delete_data_from_spreadsheet(google_sheet_link, worksheet_name='All Agents from System', keep_first_row=False)
-            google.add_google_sheet_data(google_sheet_link, data_list, True,  worksheet_name='All Agents from System')
+            google.delete_data_from_spreadsheet(google_sheet_link, worksheet_name='All Agents from System With Missing Licenses', keep_first_row=False)
+            google.add_google_sheet_data(google_sheet_link, data_list, True,  worksheet_name='All Agents from System With Missing Licenses')
 
     return None
 
