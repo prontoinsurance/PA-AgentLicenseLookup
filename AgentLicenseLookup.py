@@ -106,6 +106,38 @@ def process_google_sheet_data_individual(google_sheet_link):
     return None
 
 
+def process_google_sheet_data_all_agents(google_sheet_link):
+    # google_sheet_data = google.get_all_data_from_spreadsheet(google_sheet_link, cred.google_sheet_agent_license_status, json_format=True)
+    pulse_agent_query = '''SELECT
+            au_id As AgentId,
+            au_sts_flag as ActiveStatus,
+            au_py_id as AgentLicense,
+            CASE WHEN au_py_id IS NULL THEN 'Y' 
+                ELSE 'N' END as MissingLicenseYN
+        FROM
+            bts_pri_txs.ads_user
+        WHERE au_aug_id = 'AGENT'
+            AND au_sts_flag = 'A' 
+    '''
+
+    agent_google_sheet_data = db_functions.execute_oracle_query(query=pulse_agent_query, return_data=True, LOB=False)
+
+    if agent_google_sheet_data is not None and agent_google_sheet_data != []:
+
+        data_list = []
+
+        data_list.append(['AgentId', 'ActiveStatus', 'AgentLicense', 'MissingLicenseYN'])
+
+        for data in agent_google_sheet_data:
+            data_list.append([data['AGENTID'], data['ACTIVESTATUS'], data['AGENTLICENSE'], data['MISSINGLICENSEYN']])
+
+        if data_list is not None and len(data_list) != 0:
+            google.delete_data_from_spreadsheet(google_sheet_link, worksheet_name='All Agents from System', keep_first_row=False)
+            google.add_google_sheet_data(google_sheet_link, data_list, True,  worksheet_name='All Agents from System')
+
+    return None
+
+
 def process_google_sheet_data_appointment(google_sheet_link):
     # google_sheet_data = google.get_all_data_from_spreadsheet(google_sheet_link, cred.google_sheet_agent_license_status, json_format=True)
     agent_google_sheet_data = db_functions.get_agent_appointment_status([None])
@@ -187,6 +219,12 @@ def main():
         google_service, google_sheet_link = setup_google_connection()
     except Exception as w:
         log_information(note='Failure to connect to Google: ' + str(w)[0:900], failure_bit=1)
+
+    # populate worksheet for all agents
+    try:
+        process_google_sheet_data_all_agents(google_sheet_link)
+    except:
+        pass
 
     # function to get claims that will
     oracle_json_data = db_functions.get_pulse_agent_lookup()
