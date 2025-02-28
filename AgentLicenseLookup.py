@@ -55,12 +55,12 @@ def setup_google_connection():
 
 
 def load_sircon():
-    browser = web_functions.web_driver_download()
-    web_functions.web_wait()
+    browser = web_functions.icongito_web_driver_download()
+    web_functions.web_wait(5)
     browser = web_functions.startup_browser(browser, cred.sircon_compliance_website)
-    web_functions.web_wait()
+    web_functions.web_wait(5)
     browser = web_functions.sircon_proceed_check_webpage(browser)
-    web_functions.web_wait()
+    web_functions.web_wait(8)
     return browser
 
 
@@ -135,18 +135,21 @@ def thread_function(agent_lookup_data, google_sheet_link, thread_number):
         thread_index = 1
 
         for agent in agent_lookup_data:
+
             print("Thread # " + str(thread_number) + " Processing : " + str(thread_index) + " out of " + str(
                 len(agent_lookup_data)))
 
-            if thread_index % 200 == 0:
-                process_google_sheet_data(google_sheet_link)
-                process_google_sheet_data_individual(google_sheet_link)
-                process_google_sheet_data_appointment(google_sheet_link)
+            # if thread_index % 200 == 0:
+            #     process_google_sheet_data(google_sheet_link)
+            #     process_google_sheet_data_individual(google_sheet_link)
+            #     process_google_sheet_data_appointment(google_sheet_link)
 
             browser = web_functions.sircon_add_license_search_info(browser, agent["LicenseNumber"])
 
             # At this point it should be on the screen
             browser, individual_data, data_returned = web_functions.sircon_get_individual_date(browser)
+
+            time.sleep(2)
 
             if data_returned:
                 # Add a try here since if succesful this will break
@@ -170,6 +173,11 @@ def thread_function(agent_lookup_data, google_sheet_link, thread_number):
                     agent["AgentImportId"]), failure_bit=1)
 
             thread_index += 1
+
+        process_google_sheet_data(google_sheet_link)
+        process_google_sheet_data_individual(google_sheet_link)
+        process_google_sheet_data_appointment(google_sheet_link)
+
     except Exception as e:
         print("Error occurred during processing " + str(e))
     finally:
@@ -205,8 +213,8 @@ def main():
     #     google.update_google_sheet_row_by_id(google_sheet_link, agent_data[0], agent_data[1:], True, cred.google_sheet_agent_license_status)
 
     if len(agent_lookup_data) != 0:
-        if len(agent_lookup_data) >= 4:
-            list_size = len(agent_lookup_data) // 4
+        if len(agent_lookup_data) >= 2:
+            list_size = len(agent_lookup_data) // 2
         else:
             list_size = agent_lookup_data
 
